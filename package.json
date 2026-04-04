@@ -1,7 +1,7 @@
 {
   "name": "moodland",
   "private": false,
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "心境漫游：浏览器内摄像头视觉与本地 LLM 结合的呼吸引导界面。",
   "license": "Apache-2.0",
   "repository": {
@@ -9,6 +9,9 @@
     "url": "https://github.com/SteveYang05/Mood_Land.git"
   },
   "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "copy:ort": "node scripts/copy-ort-wasm.mjs",
     "dev": "vite",
