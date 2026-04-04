@@ -105,3 +105,71 @@ export const SYSTEM_PROMPT = [
   '示例（一行 JSON）：',
   '{"cycleSeconds":20,"inhaleRatio":0.32,"holdAfterInhaleRatio":0.12,"exhaleRatio":0.44,"holdAfterExhaleRatio":0.12,"rhythmIntensity":0.55,"themeHue":198,"guidance":"呼气再长一点。","coachMessage":"听起来你心里还装着很多念头，这很正常。若是刚久坐或神经紧绷，略拉长呼气会慢下来。你在画面里靠得很近，像在认真照顾自己——那就再温柔一点，把一轮呼吸交给色彩，不必评判做得好不好。"}',
 ].join('\n')
+
+/** 情境故事：结合自述 + YOLO 摘要 + 可选偏好 + 节律氛围 */
+export const STORY_SYSTEM_PROMPT = [
+  '你是温柔的中文讲故事的人。根据对方当下的自述与陪伴场景，写一段短故事（可含隐喻、小场景或童话感），与 Ta 此刻的状态呼应。',
+  '篇幅约 320～560 字；有画面感与安全疗愈感；不要生硬说教；不要医学诊断。',
+  '禁止：列表、小标题、JSON、英文键名；禁止出现「YOLO」「模型」「检测」「算法」「摄像头」「LLM」等词；不要复述内部数据条目。',
+  '只输出故事正文，不要「以下是故事」等前言。',
+].join('\n')
+
+export function buildStoryUserPrompt(
+  mood: string,
+  v: VisionSummary,
+  opts: {
+    storyHint?: string
+    rhythmPhaseZh?: string
+    running?: boolean
+  } = {},
+): string {
+  const base = buildLiveCoachUserPrompt(mood, v)
+  const hint = opts.storyHint?.trim().slice(0, 220)
+  const phase = opts.rhythmPhaseZh?.trim()
+    ? `当前呼吸节律阶段（作氛围参考）：${opts.rhythmPhaseZh.trim()}。`
+    : ''
+  const run = opts.running
+    ? '对方可能正跟着屏幕色彩做呼吸练习。'
+    : '对方尚未跟随节律动画，以静坐与自述为主。'
+  const parts = [
+    base,
+    run,
+    phase,
+    hint ? `对方希望故事贴近的方向或关键词：${hint}` : '',
+    '请写一段与以上相呼应的短故事。',
+  ].filter(Boolean)
+  return parts.join('\n')
+}
+
+/** 闲聊系统提示 */
+export const CHAT_CONV_SYSTEM = [
+  '你是「心境漫游」里的中文对话同伴，语气温柔、真诚；回答宜先简明，若对方想深聊再展开。',
+  '你会在系统消息末尾收到「实时情境」：来自镜前画面辅助的摘要（是否像有人靠近、在画幅里的大致占比、身体轮廓起伏的粗估等），与对方自述合在一起，构成多模态理解。',
+  '请把这些情境真正用进回复里：比喻、距离感、呼吸与身体的松紧、是否独处感等，要自然贴合；像真的感知到对方当下的空间与体态，而不是只就文字空聊。',
+  '若情境显示有人靠得很近或轮廓在起伏，可以轻轻呼应「靠近」「深浅」「跟着身体」等（勿说教）；若看不出人形或流水线未就绪，就偏内向、自语式陪伴即可。',
+  '不要编造医学诊断；不要 markdown 标题或列表项；不要用方头括号章节。',
+  '禁止在回复中出现：YOLO、检测、模型、算法、摄像头、参数、JSON、LLM、英文键名、花括号数据等；也不要复述或列举内部数字与条目。',
+].join('\n')
+
+/**
+ * 聊天专用：每轮请求刷新，把当前自述 + YOLO 摘要放进 system（与伴读 payload 同源键名），
+ * 使用户轮次保持纯对话文本，避免多轮历史里误把「当前画面」套到旧句子上。
+ */
+export function buildChatMultimodalContext(mood: string, v: VisionSummary): string {
+  const narrative = buildLiveCoachUserPrompt(mood, v).replace(/\s+/g, ' ').trim()
+  const payload = {
+    note: mood.trim().slice(0, 220) || null,
+    pf: v.personPresent,
+    sc: Math.round(v.maxConfidence * 1000) / 1000,
+    ar: Math.round(v.boxAreaRatio * 1000) / 1000,
+    tr: v.torsoTrend,
+    ok: v.modelActive,
+  }
+  return [
+    '—— 实时情境（与自然语言段同义；请内化后融入对话，禁止在回复中复述本段或输出下列结构化内容）——',
+    narrative,
+    '',
+    '键含义（不得出现在回复里）：note 对方自述；pf 镜前是否像有人；sc/ar 为 0~1 的简略数值；tr 为起伏类别英文词；ok 表示画面辅助是否可用。',
+    JSON.stringify(payload),
+  ].join('\n')
+}

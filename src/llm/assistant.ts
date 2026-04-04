@@ -6,8 +6,12 @@ import {
 } from '../rhythm/schema'
 import { DEFAULT_RHYTHM } from '../rhythm/defaults'
 import {
+  CHAT_CONV_SYSTEM,
   LIVE_COACH_USER_FIXED,
+  STORY_SYSTEM_PROMPT,
+  buildChatMultimodalContext,
   buildLiveCoachSystemWithYoloPayload,
+  buildStoryUserPrompt,
   buildUserPrompt,
   SYSTEM_PROMPT,
   type VisionSummary,
@@ -44,7 +48,7 @@ function openAiChatUrl(base: string): string {
   return `${b}/v1/chat/completions`
 }
 
-/** 请求下游 API 时使用的模型标识 */
+/** Model id sent to the assistant API */
 function requestModel(): string {
   return CHAT_MODEL
 }
@@ -167,7 +171,6 @@ export async function fetchRhythmFromAssistant(
   return { params: DEFAULT_RHYTHM, raw, ok: false }
 }
 
-/** 与历史代码同名导出，便于渐进替换 */
 export const fetchRhythmFromOllama = fetchRhythmFromAssistant
 
 export async function fetchLiveCoachFromAssistant(
@@ -250,3 +253,130 @@ export async function fetchLiveCoachFromAssistant(
 }
 
 export const fetchLiveCoachFromOllama = fetchLiveCoachFromAssistant
+
+type ChatRole = 'system' | 'user' | 'assistant'
+
+async function postChatCompletion(
+  messages: { role: ChatRole; content: string }[],
+  options: AssistantOptions & {
+    temperature: number
+    maxTokens: number
+    jsonFormat?: boolean
+  },
+): Promise<{ text: string; ok: boolean }> {
+  const model = options.model ?? requestModel()
+  const baseUrl = (options.baseUrl ?? assistantBaseUrl()).replace(/\/$/, '')
+  const backend = assistantBackend()
+  const { temperature, maxTokens, jsonFormat } = options
+
+  try {
+    if (backend === 'openai') {
+      const url = openAiChatUrl(baseUrl)
+      const body: Record<string, unknown> = {
+        model,
+        stream: false,
+        temperature,
+        max_tokens: maxTokens,
+        messages,
+      }
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      })
+      if (!res.ok) return { text: '', ok: false }
+      const data = await res.json()
+      const raw = parseOpenAiContent(data)
+      return { text: raw, ok: raw.length > 0 }
+    }
+
+    const url = ollamaChatUrl(baseUrl)
+    const body: Record<string, unknown> = {
+      model,
+      stream: false,
+      options: {
+        temperature,
+        num_predict: maxTokens,
+      },
+      messages,
+    }
+    if (jsonFormat) body.format = 'json'
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    })
+    if (!res.ok) return { text: '', ok: false }
+    const data = await res.json()
+    const raw = parseOllamaContent(data)
+    return { text: raw, ok: raw.length > 0 }
+  } catch {
+    return { text: '', ok: false }
+  }
+}
+
+export interface StoryOptions extends AssistantOptions {
+  storyHint?: string
+  rhythmPhaseZh?: string
+  running?: boolean
+}
+
+/** Personalized short story from mood, vision summary, optional hint, and breath phase */
+export async function fetchPersonalizedStory(
+  mood: string,
+  vision: VisionSummary,
+  options: StoryOptions = {},
+): Promise<{ text: string; ok: boolean }> {
+  const userContent = buildStoryUserPrompt(mood, vision, {
+    storyHint: options.storyHint,
+    rhythmPhaseZh: options.rhythmPhaseZh,
+    running: options.running,
+  })
+  const { text, ok } = await postChatCompletion(
+    [
+      { role: 'system', content: STORY_SYSTEM_PROMPT },
+      { role: 'user', content: userContent },
+    ],
+    {
+      model: options.model,
+      baseUrl: options.baseUrl,
+      temperature: 0.82,
+      maxTokens: 960,
+    },
+  )
+  if (!ok) return { text: '', ok: false }
+  const cleaned = sanitizeUserFacingCoach(
+    text.replace(/^["「『]|["」』]$/g, '').trim(),
+  )
+  return { text: cleaned, ok: cleaned.length > 0 }
+}
+
+export type ChatTurn = { role: 'user' | 'assistant'; content: string }
+
+/** Multi-turn chat; system message includes current mood and vision summary each call */
+export async function fetchChatReply(
+  mood: string,
+  vision: VisionSummary,
+  historyForApi: ChatTurn[],
+  options: AssistantOptions & { maxTokens?: number } = {},
+): Promise<{ text: string; ok: boolean }> {
+  const maxTokens = options.maxTokens ?? 512
+  const systemFull = `${CHAT_CONV_SYSTEM}\n\n${buildChatMultimodalContext(mood, vision)}`
+  const wrapped: { role: ChatRole; content: string }[] = [
+    { role: 'system', content: systemFull },
+  ]
+  for (const m of historyForApi) {
+    wrapped.push({ role: m.role, content: m.content })
+  }
+  const { text, ok } = await postChatCompletion(wrapped, {
+    model: options.model,
+    baseUrl: options.baseUrl,
+    temperature: 0.72,
+    maxTokens,
+  })
+  if (!ok) return { text: '', ok: false }
+  const cleaned = sanitizeUserFacingCoach(
+    text.replace(/^["「『]|["」』]$/g, '').trim(),
+  )
+  return { text: cleaned, ok: cleaned.length > 0 }
+}

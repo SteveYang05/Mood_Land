@@ -10,9 +10,9 @@ type Props = {
   syncHint: string | null
 }
 
-const GW = 72
-const GH = 44
-const CELL = 5
+/** 与 16:9 画幅一致的栅格：64×36 */
+const GW = 64
+const GH = 36
 
 function fract(n: number): number {
   return n - Math.floor(n)
@@ -49,18 +49,22 @@ function heatColor(t: number): [number, number, number] {
   return c
 }
 
+type Dims = { picW: number; picH: number; cell: number }
+
 export default function HeatmapRhythm({
   params,
   anchorMs,
   running,
   syncHint,
 }: Props) {
+  const wrapRef = useRef<HTMLDivElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const rafRef = useRef<number>(0)
   const paramsRef = useRef(params)
   const anchorRef = useRef(anchorMs)
   const runningRef = useRef(running)
   const syncHintRef = useRef<string | null>(null)
+  const dimsRef = useRef<Dims>({ picW: 320, picH: 180, cell: 320 / GW })
 
   useEffect(() => {
     paramsRef.current = params
@@ -73,37 +77,67 @@ export default function HeatmapRhythm({
   }, [syncHint])
 
   useEffect(() => {
+    const wrap = wrapRef.current
     const canvas = canvasRef.current
-    if (!canvas) return
+    if (!wrap || !canvas) return
     const ctx = canvas.getContext('2d', { alpha: false })
     if (!ctx) return
 
-    const dpr = Math.min(2, window.devicePixelRatio || 1)
-    const picW = GW * CELL
-    const picH = GH * CELL
-    canvas.width = Math.round(picW * dpr)
-    canvas.height = Math.round(picH * dpr)
-    canvas.style.width = `${picW}px`
-    canvas.style.height = `${picH}px`
-    ctx.scale(dpr, dpr)
+    let alive = true
+
+    const applySize = () => {
+      const r = wrap.getBoundingClientRect()
+      let picW = Math.floor(r.width)
+      let picH = Math.floor((picW * 9) / 16)
+      if (picH > r.height && r.height > 8) {
+        picH = Math.floor(r.height)
+        picW = Math.floor((picH * 16) / 9)
+      }
+      picW = Math.max(96, picW)
+      picH = Math.max(54, picH)
+      const cell = picW / GW
+      dimsRef.current = { picW, picH, cell }
+
+      const dpr = Math.min(2, window.devicePixelRatio || 1)
+      canvas.width = Math.round(picW * dpr)
+      canvas.height = Math.round(picH * dpr)
+      canvas.style.width = `${picW}px`
+      canvas.style.height = `${picH}px`
+      ctx.setTransform(1, 0, 0, 1, 0, 0)
+      ctx.scale(dpr, dpr)
+    }
+
+    const ro = new ResizeObserver(() => applySize())
+    applySize()
+    ro.observe(wrap)
 
     const loop = () => {
+      if (!alive) return
       const p = paramsRef.current
       const hueShift = ((p.themeHue ?? 200) - 200) * 0.15
       const anch = anchorRef.current
       const run = runningRef.current
       const amp = scaleAmplitude(p.rhythmIntensity)
       const now = performance.now()
+      const { picW, picH, cell } = dimsRef.current
+
+      const fsIdleLg = Math.max(11, Math.round(picW * 0.034))
+      const fsIdleSm = Math.max(10, Math.round(picW * 0.03))
+      const fsSeg = Math.max(12, Math.round(picW * 0.039))
+      const fsGuide = Math.max(10, Math.round(picW * 0.03))
+      const fsHint = Math.max(10, Math.round(picW * 0.03))
+      const barTop = Math.max(22, picH * 0.12)
+      const barBot = Math.max(40, picH * 0.24)
 
       if (!run) {
         ctx.fillStyle = '#0a0e16'
         ctx.fillRect(0, 0, picW, picH)
         ctx.fillStyle = 'rgba(170, 185, 210, 0.35)'
-        ctx.font = '13px system-ui, sans-serif'
+        ctx.font = `${fsIdleLg}px system-ui, sans-serif`
         ctx.textAlign = 'center'
-        ctx.fillText('轻触「开始」后，随色彩起伏呼吸', picW / 2, picH / 2 - 6)
-        ctx.font = '12px system-ui, sans-serif'
-        ctx.fillText('越深越沉静，越亮越舒展', picW / 2, picH / 2 + 14)
+        ctx.fillText('轻触「开始」后，随色彩起伏呼吸', picW / 2, picH / 2 - fsIdleLg * 0.45)
+        ctx.font = `${fsIdleSm}px system-ui, sans-serif`
+        ctx.fillText('越深越沉静，越亮越舒展', picW / 2, picH / 2 + fsIdleLg * 0.75)
         rafRef.current = requestAnimationFrame(loop)
         return
       }
@@ -133,47 +167,53 @@ export default function HeatmapRhythm({
 
           const [r, g, b] = heatColor(v)
           ctx.fillStyle = `rgb(${r},${g},${b})`
-          ctx.fillRect(i * CELL, j * CELL, CELL, CELL)
+          ctx.fillRect(i * cell, j * cell, cell + 0.5, cell + 0.5)
         }
       }
 
       const hint = syncHintRef.current
       if (run && hint) {
         ctx.fillStyle = 'rgba(38, 28, 32, 0.92)'
-        ctx.fillRect(0, 0, picW, 27)
+        ctx.fillRect(0, 0, picW, barTop)
         ctx.fillStyle = 'rgba(255, 232, 218, 0.96)'
-        ctx.font = '600 11px system-ui, sans-serif'
+        ctx.font = `600 ${fsHint}px system-ui, sans-serif`
         ctx.textAlign = 'center'
-        const line =
-          hint.length > 40 ? `${hint.slice(0, 39)}…` : hint
-        ctx.fillText(line, picW / 2, 18)
+        const line = hint.length > 40 ? `${hint.slice(0, 39)}…` : hint
+        ctx.fillText(line, picW / 2, barTop * 0.62)
       }
 
       ctx.fillStyle = 'rgba(10, 12, 20, 0.42)'
-      ctx.fillRect(0, picH - 52, picW, 52)
+      ctx.fillRect(0, picH - barBot, picW, barBot)
       ctx.fillStyle = 'rgba(245, 248, 255, 0.95)'
-      ctx.font = '600 14px system-ui, sans-serif'
+      ctx.font = `600 ${fsSeg}px system-ui, sans-serif`
       ctx.textAlign = 'center'
-      ctx.fillText(segmentLabelZh(st.segment), picW / 2, picH - 30)
+      ctx.fillText(segmentLabelZh(st.segment), picW / 2, picH - barBot * 0.45)
       if (p.guidance) {
-        ctx.font = '11px system-ui, sans-serif'
+        ctx.font = `${fsGuide}px system-ui, sans-serif`
         ctx.fillStyle = 'rgba(210, 218, 235, 0.82)'
-        const g = p.guidance.length > 36 ? `${p.guidance.slice(0, 35)}…` : p.guidance
-        ctx.fillText(g, picW / 2, picH - 12)
+        const g =
+          p.guidance.length > 36 ? `${p.guidance.slice(0, 35)}…` : p.guidance
+        ctx.fillText(g, picW / 2, picH - barBot * 0.18)
       }
 
       rafRef.current = requestAnimationFrame(loop)
     }
 
     rafRef.current = requestAnimationFrame(loop)
-    return () => cancelAnimationFrame(rafRef.current)
+    return () => {
+      alive = false
+      cancelAnimationFrame(rafRef.current)
+      ro.disconnect()
+    }
   }, [])
 
   return (
-    <canvas
-      ref={canvasRef}
-      className="heatmap-rhythm"
-      aria-label="呼吸律动热力图"
-    />
+    <div ref={wrapRef} className="heatmap-rhythm-root">
+      <canvas
+        ref={canvasRef}
+        className="heatmap-rhythm"
+        aria-label="呼吸律动热力图"
+      />
+    </div>
   )
 }

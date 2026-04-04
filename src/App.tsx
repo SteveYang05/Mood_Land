@@ -2,7 +2,9 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import type { InferenceSession } from 'onnxruntime-web'
 import CameraPreview from './components/CameraPreview'
 import HeatmapRhythm from './components/HeatmapRhythm'
+import LlmChatPanel from './components/LlmChatPanel'
 import MoodInput from './components/MoodInput'
+import StoryPanel from './components/StoryPanel'
 import { CHAT_MODEL, VISION_BLOB_URL } from './config'
 import {
   fetchLiveCoachFromOllama,
@@ -59,6 +61,9 @@ export default function App() {
   const [statusLine, setStatusLine] = useState('')
   const [busy, setBusy] = useState(false)
   const [coachStream, setCoachStream] = useState('')
+  const [rightTab, setRightTab] = useState<'rhythm' | 'story' | 'chat'>(
+    'rhythm',
+  )
 
   useEffect(() => {
     busyRef.current = busy
@@ -178,7 +183,7 @@ export default function App() {
     return () => stopCamera()
   }, [stopCamera])
 
-  /** 进行中：按节律间隔拉取短句伴读（最新 mood + 画面摘要 + 当前阶段） */
+  /** While running: poll short coach lines on an interval derived from the breath cycle */
   useEffect(() => {
     if (!running) return
     let cancelled = false
@@ -286,77 +291,167 @@ export default function App() {
   return (
     <div className="app">
       <div className="app-bg" aria-hidden />
-      <header className="header">
-        <p className="eyebrow">慢下来</p>
-        <h1>心境漫游</h1>
-        <p className="tagline">色彩随呼吸起伏，自述与画面只在本机陪伴你。</p>
+      <header className="shell-header">
+        <h1 className="shell-brand">心境漫游</h1>
+        <p className="shell-tagline">呼吸 · 伴读 · 故事与聊天（本机）</p>
       </header>
 
-      <main className="main">
-        <section className="visual-column">
-          <div className="heatmap-wrap">
-            <HeatmapRhythm
-              params={rhythm}
-              anchorMs={anchorMs}
-              running={running}
-              syncHint={syncHint}
-            />
-          </div>
-          <div className="camera-panel">
-            {cameraOn ? (
-              <>
-                <CameraPreview ref={videoRef} active />
-                <span className="camera-label">你的画面</span>
-              </>
-            ) : (
-              <div className="camera-placeholder">
-                <p>打开「使用摄像头」后，可看见自己并与节律轻柔对齐（可选）。</p>
+      <main className="shell">
+        <section className="visual-pane" aria-label="节律与画面">
+          <div className="visual-slot">
+            <div className="visual-ar">
+              <div className="camera-panel">
+                {cameraOn ? (
+                  <>
+                    <CameraPreview ref={videoRef} active />
+                    <span className="camera-label">画面</span>
+                  </>
+                ) : (
+                  <div className="camera-placeholder">
+                    <p>可开摄像头辅助对齐（可选）</p>
+                  </div>
+                )}
               </div>
-            )}
+            </div>
+          </div>
+          <div className="visual-slot">
+            <div className="visual-ar">
+              <div className="heatmap-wrap">
+                <HeatmapRhythm
+                  params={rhythm}
+                  anchorMs={anchorMs}
+                  running={running}
+                  syncHint={syncHint}
+                />
+              </div>
+            </div>
           </div>
           {!cameraOn && <CameraPreview ref={videoRef} active={false} />}
         </section>
 
-        <section className="control-column">
-          <article className="coach-card">
-            <div className="coach-card-head">
-              <h2 className="coach-title">伴读</h2>
-              {running && <span className="coach-pulse">随呼吸更新</span>}
-            </div>
-            <p className="coach-body">
-              {sanitizeUserFacingCoach(
-                coachStream.trim() ? coachStream : (rhythm.coachMessage ?? ''),
-              ) || (rhythm.coachMessage ?? FALLBACK_COACH)}
-            </p>
-          </article>
-
-          <MoodInput value={mood} onChange={setMood} disabled={busy} />
-
-          <label className="toggle-row">
-            <input
-              type="checkbox"
-              checked={cameraOn}
-              onChange={(e) => setCameraOn(e.target.checked)}
-            />
-            <span>使用摄像头（可选）</span>
-          </label>
-
-          {softNotice && <p className="notice">{softNotice}</p>}
-
-          <div className="actions">
-            <button type="button" className="btn-primary" disabled={busy} onClick={() => void syncRhythm()}>
-              {busy ? '正在为你写节奏…' : '生成节奏与伴读'}
+        <section className="control-pane" aria-label="控制与对话">
+          <div className="tab-bar" role="tablist">
+            <button
+              type="button"
+              role="tab"
+              aria-selected={rightTab === 'rhythm'}
+              className={rightTab === 'rhythm' ? 'tab tab--on' : 'tab'}
+              onClick={() => setRightTab('rhythm')}
+            >
+              节律
             </button>
-            <button type="button" className="btn-quiet" onClick={toggleRun}>
-              {running ? '暂停' : '开始'}
+            <button
+              type="button"
+              role="tab"
+              aria-selected={rightTab === 'story'}
+              className={rightTab === 'story' ? 'tab tab--on' : 'tab'}
+              onClick={() => setRightTab('story')}
+            >
+              故事
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={rightTab === 'chat'}
+              className={rightTab === 'chat' ? 'tab tab--on' : 'tab'}
+              onClick={() => setRightTab('chat')}
+            >
+              聊天
             </button>
           </div>
 
-          {statusLine && <p className="status">{statusLine}</p>}
+          <div className="panel-body">
+            {rightTab === 'rhythm' && (
+              <div className="rhythm-panel">
+                <article className="coach-card">
+                  <div className="coach-card-head">
+                    <h2 className="coach-title">伴读</h2>
+                    {running && (
+                      <span className="coach-pulse">随呼吸</span>
+                    )}
+                  </div>
+                  <p className="coach-body">
+                    {sanitizeUserFacingCoach(
+                      coachStream.trim()
+                        ? coachStream
+                        : (rhythm.coachMessage ?? ''),
+                    ) || (rhythm.coachMessage ?? FALLBACK_COACH)}
+                  </p>
+                </article>
 
-          <p className="footnote">
-            仅供放松辅助；轮廓起伏判断不精确，请以自身舒适为准。使用前请在本机启动配套助手服务。
-          </p>
+                <MoodInput
+                  value={mood}
+                  onChange={setMood}
+                  disabled={busy}
+                  compact
+                />
+
+                <div className="toolbar-row">
+                  <label className="toggle-inline">
+                    <input
+                      type="checkbox"
+                      checked={cameraOn}
+                      onChange={(e) => setCameraOn(e.target.checked)}
+                    />
+                    <span>摄像头</span>
+                  </label>
+                  <div className="actions actions--inline">
+                    <button
+                      type="button"
+                      className="btn-primary"
+                      disabled={busy}
+                      onClick={() => void syncRhythm()}
+                    >
+                      {busy ? '生成中…' : '生成节奏'}
+                    </button>
+                    <button
+                      type="button"
+                      className="btn-quiet"
+                      onClick={toggleRun}
+                    >
+                      {running ? '暂停' : '开始'}
+                    </button>
+                  </div>
+                </div>
+
+                {softNotice && <p className="notice notice--tight">{softNotice}</p>}
+                {statusLine && (
+                  <p className="status status--tight">{statusLine}</p>
+                )}
+                <p className="footnote footnote--tight">
+                  放松辅助，以舒适为准；需本机助手运行。
+                </p>
+              </div>
+            )}
+
+            {rightTab === 'story' && (
+              <StoryPanel
+                mood={mood}
+                vision={vision}
+                running={running}
+                rhythm={rhythm}
+                anchorMs={anchorMs}
+                model={CHAT_MODEL}
+                disabled={busy}
+                compact
+              />
+            )}
+
+            {/* Stay mounted so chat history survives tab switches */}
+            <div
+              className="chat-tab-panel"
+              hidden={rightTab !== 'chat'}
+              aria-hidden={rightTab !== 'chat'}
+            >
+              <LlmChatPanel
+                mood={mood}
+                vision={vision}
+                model={CHAT_MODEL}
+                disabled={busy}
+                compact
+              />
+            </div>
+          </div>
         </section>
       </main>
     </div>

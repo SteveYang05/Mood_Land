@@ -53,6 +53,35 @@ function stripEmbeddedStateJson(text: string): string {
   return t
 }
 
+/** 去掉模型照抄界面上的「伴读 / 随呼吸」等标题行（常与正文连在一起输出） */
+function stripUiEchoCoachHeadings(text: string): string {
+  let t = text.trim()
+  for (let n = 0; n < 6; n++) {
+    const next = t
+      .replace(/^(?:伴读|随呼吸)\s*[：:]\s*/u, '')
+      .replace(/^伴读\s+随呼吸\s+/u, '')
+      .replace(/^伴读\s+/u, '')
+      .replace(/^随呼吸\s+/u, '')
+    if (next === t) break
+    t = next.trim()
+  }
+  t = t.replace(/^\s*(?:伴读|随呼吸)\s*[：:]\s*/gm, '').trim()
+  const lines = t.split(/\n+/)
+  const drop = (s: string) => {
+    const x = s.trim()
+    if (!x) return true
+    if (/^伴读$/.test(x)) return true
+    if (/^随呼吸$/.test(x)) return true
+    if (/^伴读\s+随呼吸$/.test(x)) return true
+    if (/^(?:伴读|随呼吸)\s*[：:]\s*\S/.test(x)) return true
+    return false
+  }
+  while (lines.length && drop(lines[0]!)) lines.shift()
+  t = lines.join('\n').trim()
+  t = t.replace(/^(?:伴读|随呼吸)(?:\s+[：:])?\s+/u, '')
+  return t
+}
+
 /** 截断从第一个明显「提示块」标记开始的后缀 */
 function truncatePromptEcho(text: string): string {
   let minCut = text.length
@@ -71,7 +100,8 @@ export function sanitizeUserFacingCoach(text: string): string {
   if (!raw) return ''
 
   const strippedJson = stripEmbeddedStateJson(raw)
-  const truncated = truncatePromptEcho(strippedJson)
+  const noUiEcho = stripUiEchoCoachHeadings(strippedJson)
+  const truncated = truncatePromptEcho(noUiEcho)
 
   const paras = truncated
     .split(/\n+/)

@@ -1,4 +1,4 @@
-# Moodland(心境漫游)
+# Moodland
 
 Browser-based experience that combines the webcam with a local or self-hosted LLM to suggest breathing rhythm and short on-screen coaching. Vision runs in the browser via ONNX Runtime Web; chat defaults to an [Ollama](https://ollama.com/)-compatible API. In development, Vite proxies `/api/ollama` to `127.0.0.1:11434` to avoid CORS issues.
 
@@ -6,6 +6,9 @@ Browser-based experience that combines the webcam with a local or self-hosted LL
 
 - Lightweight object detection on video frames to build a compact visual summary.
 - Sends mood plus summary to the assistant and parses structured rhythm parameters (inhale/hold/exhale ratios, etc.) to drive the UI.
+- **Rhythm** tab: generate a breath cycle, optional live coach lines synced to phase.
+- **Story** tab: short personalized story grounded in mood, vision summary, and breath context.
+- **Chat** tab: multi-turn chat with the same multimodal context refreshed on each send.
 - Works with Ollama on the same machine by default; optional OpenAI-compatible endpoints via environment variables.
 
 ## Requirements
@@ -55,6 +58,7 @@ See `.env.example` when it exists in the tree.
 |------|------|
 | `src/` | React application |
 | `src/yolo/` | In-browser inference session |
+| `src/components/` | UI including `LlmChatPanel`, `StoryPanel`, rhythm and camera |
 | `src/llm/` | Assistant HTTP client and parsing |
 | `src/rhythm/` | Rhythm schema, defaults, validation |
 | `public/models/` | Output of `download:yolo` (large blobs are usually gitignored) |
