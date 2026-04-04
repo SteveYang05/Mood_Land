@@ -1,4 +1,4 @@
-# Moodland
+# Moodland(心境漫游)
 
 Browser-based experience that combines the webcam with a local or self-hosted LLM to suggest breathing rhythm and short on-screen coaching. Vision runs in the browser via ONNX Runtime Web; chat defaults to an [Ollama](https://ollama.com/)-compatible API. In development, Vite proxies `/api/ollama` to `127.0.0.1:11434` to avoid CORS issues.
 
