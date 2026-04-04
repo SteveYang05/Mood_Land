@@ -1,0 +1,42 @@
+{
+  "name": "moodland",
+  "private": false,
+  "version": "0.0.0",
+  "description": "心境漫游：浏览器内摄像头视觉与本地 LLM 结合的呼吸引导界面。",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/SteveYang05/Mood_Land.git"
+  },
+  "type": "module",
+  "scripts": {
+    "copy:ort": "node scripts/copy-ort-wasm.mjs",
+    "dev": "vite",
+    "build": "tsc -b && npm run copy:ort && vite build",
+    "lint": "eslint .",
+    "preview": "vite preview",
+    "download:yolo": "node scripts/download-yolo.mjs"
+  },
+  "dependencies": {
+    "onnxruntime-web": "^1.24.3",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@emnapi/core": "^1.9.2",
+    "@emnapi/runtime": "^1.9.2",
+    "@eslint/js": "^9.39.4",
+    "@types/node": "^24.12.0",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^6.0.1",
+    "eslint": "^9.39.4",
+    "eslint-plugin-react-hooks": "^7.0.1",
+    "eslint-plugin-react-refresh": "^0.5.2",
+    "globals": "^17.4.0",
+    "typescript": "~5.9.3",
+    "typescript-eslint": "^8.57.0",
+    "vite": "^8.0.1"
+  }
+}
