@@ -73,6 +73,73 @@
   text-shadow: 0 1px 8px rgba(0, 0, 0, 0.45);
 }
 
+.shell-voice {
+  flex: 1 1 100%;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem 0.75rem;
+  padding-top: 0.08rem;
+}
+
+.shell-voice__opt {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.28rem;
+  font-size: 0.68rem;
+  color: rgba(218, 226, 234, 0.88);
+  cursor: pointer;
+  user-select: none;
+}
+
+.shell-voice__opt input {
+  accent-color: #7eb8c4;
+}
+
+.shell-voice__warn {
+  font-size: 0.58rem;
+  color: rgba(240, 200, 140, 0.92);
+  max-width: 16rem;
+  text-align: center;
+  line-height: 1.35;
+}
+
+.shell-voice__select-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.28rem;
+  font-size: 0.68rem;
+  color: rgba(218, 226, 234, 0.88);
+}
+
+.shell-voice__select-label {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.shell-voice__select {
+  max-width: min(14rem, 42vw);
+  font-size: 0.62rem;
+  line-height: 1.2;
+  padding: 0.12rem 0.28rem;
+  border-radius: 0.28rem;
+  border: 1px solid rgba(126, 184, 196, 0.35);
+  background: rgba(8, 18, 22, 0.72);
+  color: #f0ebe4;
+  cursor: pointer;
+}
+
+.shell-voice__select:disabled {
+  opacity: 0.55;
+  cursor: wait;
+}
+
+.shell-voice__select:focus-visible {
+  outline: 2px solid rgba(126, 184, 196, 0.55);
+  outline-offset: 1px;
+}
+
 /* —— 主栅格：左画右控，占满剩余视口 —— */
 .shell {
   flex: 1;
@@ -307,6 +374,14 @@
   flex-shrink: 0;
 }
 
+.coach-card-head-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 0.28rem;
+}
+
 .coach-title {
   margin: 0;
   font-size: 0.65rem;
@@ -354,6 +429,18 @@
   font-size: 0.74rem;
   color: rgba(215, 222, 230, 0.76);
   margin-bottom: 0.25rem;
+}
+
+.mood-input__field {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.28rem;
+}
+
+.mood-input__field textarea {
+  flex: 1;
+  min-width: 0;
+  width: auto;
 }
 
 .mood-input textarea {
@@ -715,6 +802,22 @@
   flex-shrink: 0;
 }
 
+.chat-input-inner {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: flex-end;
+  gap: 0.28rem;
+}
+
+.chat-send-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 0.22rem;
+  flex-shrink: 0;
+  align-items: stretch;
+}
+
 .chat-input {
   margin-bottom: 0;
 }
@@ -722,14 +825,91 @@
 .chat-input-row--tab .chat-input {
   flex: 1;
   margin: 0;
+  min-width: 0;
 }
 
 .chat-send {
   width: auto;
-  align-self: flex-end;
-  min-width: 4rem;
+  align-self: stretch;
+  min-width: 4.2rem;
   padding: 0.38rem 0.55rem;
   font-size: 0.74rem;
+}
+
+.feature-textarea-wrap {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.28rem;
+  margin-bottom: 0.32rem;
+}
+
+.feature-textarea-wrap .feature-textarea {
+  flex: 1;
+  min-width: 0;
+  margin-bottom: 0;
+}
+
+.story-actions-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.32rem;
+  margin-bottom: 0.28rem;
+}
+
+.story-actions-row .btn-secondary {
+  width: auto;
+  min-width: 7rem;
+}
+
+.voice-mic {
+  flex-shrink: 0;
+  min-width: 2.15rem;
+  padding: 0.32rem 0.4rem;
+  border-radius: 9px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(0, 0, 0, 0.28);
+  color: rgba(200, 220, 230, 0.88);
+  font-size: 0.68rem;
+  font-weight: 600;
+  cursor: pointer;
+  line-height: 1.2;
+}
+
+.voice-mic:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.voice-mic:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.voice-mic--on {
+  border-color: rgba(130, 200, 190, 0.45);
+  color: rgba(180, 245, 228, 0.98);
+  background: rgba(60, 120, 110, 0.35);
+}
+
+.btn-voice-read {
+  width: auto;
+  padding: 0.28rem 0.5rem;
+  font-size: 0.66rem;
+  font-weight: 600;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(90, 110, 130, 0.35);
+  color: rgba(225, 232, 240, 0.92);
+  cursor: pointer;
+}
+
+.btn-voice-read:hover:not(:disabled) {
+  background: rgba(110, 135, 155, 0.45);
+}
+
+.btn-voice-read:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
 }
 
 /* 小屏：允许整页滚动，避免内容被裁切 */
@@ -777,5 +957,121 @@
 
   .control-pane {
     min-height: 62vh;
+  }
+}
+
+/* —— 首次启动 / 模型下载遮罩 —— */
+.boot-splash {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.25rem;
+  background: rgba(4, 10, 12, 0.88);
+  backdrop-filter: blur(10px);
+}
+
+.boot-splash__panel {
+  max-width: 28rem;
+  width: 100%;
+  padding: 1.35rem 1.5rem 1.5rem;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: linear-gradient(
+    165deg,
+    rgba(18, 36, 40, 0.92) 0%,
+    rgba(10, 22, 26, 0.96) 100%
+  );
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.45);
+  color: #f0ebe4;
+}
+
+.boot-splash__title {
+  margin: 0 0 0.2rem;
+  font-size: 1.25rem;
+  font-weight: 650;
+  letter-spacing: 0.12em;
+  text-align: center;
+}
+
+.boot-splash__subtitle {
+  margin: 0 0 1rem;
+  font-size: 0.78rem;
+  letter-spacing: 0.06em;
+  color: rgba(210, 220, 228, 0.72);
+  text-align: center;
+}
+
+.boot-splash__detail {
+  margin: 0 0 0.85rem;
+  font-size: 0.82rem;
+  line-height: 1.55;
+  color: rgba(232, 238, 244, 0.9);
+}
+
+.boot-splash__detail p {
+  margin: 0 0 0.45em;
+}
+
+.boot-splash__foot {
+  margin: 0 0 1rem;
+  font-size: 0.72rem;
+  line-height: 1.45;
+  color: rgba(190, 200, 210, 0.75);
+}
+
+.boot-splash__error {
+  margin: 0 0 0.65rem;
+  font-size: 0.82rem;
+  line-height: 1.5;
+  color: #ffc9c9;
+}
+
+.boot-splash__hint {
+  margin: 0 0 1rem;
+  font-size: 0.72rem;
+  line-height: 1.45;
+  color: rgba(200, 210, 220, 0.78);
+}
+
+.boot-splash__hint code {
+  font-size: 0.85em;
+  padding: 0.08em 0.28em;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.35);
+}
+
+.boot-splash__retry {
+  display: block;
+  width: 100%;
+  margin: 0;
+  padding: 0.55rem 0.85rem;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(70, 120, 130, 0.55);
+  color: #faf6f0;
+  font-size: 0.88rem;
+  cursor: pointer;
+}
+
+.boot-splash__retry:hover {
+  background: rgba(90, 145, 155, 0.6);
+}
+
+.boot-splash__spinner {
+  width: 1.65rem;
+  height: 1.65rem;
+  margin: 0 auto;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.12);
+  border-top-color: rgba(180, 220, 230, 0.85);
+  animation: boot-splash-spin 0.85s linear infinite;
+}
+
+@keyframes boot-splash-spin {
+  to {
+    transform: rotate(360deg);
   }
 }

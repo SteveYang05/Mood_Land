@@ -9,12 +9,13 @@ Browser-based experience that combines the webcam with a local or self-hosted LL
 - **Rhythm** tab: generate a breath cycle, optional live coach lines synced to phase.
 - **Story** tab: short personalized story grounded in mood, vision summary, and breath context.
 - **Chat** tab: multi-turn chat with the same multimodal context refreshed on each send.
+- Optional **speech**: browser speech recognition for dictation and `speechSynthesis` for read-aloud (see voice controls in mood and chat areas); preferences persist in `localStorage`.
 - Works with Ollama on the same machine by default; optional OpenAI-compatible endpoints via environment variables.
 
 ## Requirements
 
 - **Node.js** 20+ (current LTS recommended)
-- **Ollama** running locally with a model that matches `VITE_CHAT_MODEL` (default: `qwen2.5:0.5b-instruct`)
+- **Ollama** running locally with a model that matches `VITE_CHAT_MODEL` (default in source: `qwen2.5:7b-instruct`; use a tag you have pulled, e.g. `ollama pull qwen2.5:7b-instruct`)
 
 ## Vision weights (YOLO)
 
@@ -58,7 +59,8 @@ See `.env.example` when it exists in the tree.
 |------|------|
 | `src/` | React application |
 | `src/yolo/` | In-browser inference session |
-| `src/components/` | UI including `LlmChatPanel`, `StoryPanel`, rhythm and camera |
+| `src/components/` | UI including chat, story, rhythm, camera, optional voice controls, `BootSplash` (Tauri only) |
+| `src/voice/` | Voice preference context and Web Speech helpers |
 | `src/llm/` | Assistant HTTP client and parsing |
 | `src/rhythm/` | Rhythm schema, defaults, validation |
 | `public/models/` | Output of `download:yolo` (large blobs are usually gitignored) |

@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { InferenceSession } from 'onnxruntime-web'
+import BootSplash from './components/BootSplash'
 import CameraPreview from './components/CameraPreview'
 import HeatmapRhythm from './components/HeatmapRhythm'
 import LlmChatPanel from './components/LlmChatPanel'
@@ -27,6 +28,14 @@ import {
   summarizeForLlm,
 } from './yolo/session'
 import './App.css'
+import VoiceReadAloudButton from './components/VoiceReadAloudButton'
+import { useVoicePrefs } from './voice/VoicePrefsContext'
+import {
+  isSpeechRecognitionSupported,
+  sortVoicesForPicker,
+} from './voice/speechSupport'
+import { useTtsVoices } from './voice/useTtsVoices'
+import { useLlmBootstrapGate } from './useLlmBootstrapGate'
 
 function emptyVision(modelActive: boolean): VisionSummary {
   return {
@@ -39,6 +48,20 @@ function emptyVision(modelActive: boolean): VisionSummary {
 }
 
 export default function App() {
+  const llmBoot = useLlmBootstrapGate()
+  const {
+    voiceInput,
+    voiceOutput,
+    ttsVoiceURI,
+    setVoiceInput,
+    setVoiceOutput,
+    setTtsVoiceURI,
+  } = useVoicePrefs()
+  const ttsVoices = useTtsVoices()
+  const sortedTtsVoices = useMemo(
+    () => sortVoicesForPicker(ttsVoices),
+    [ttsVoices],
+  )
   const videoRef = useRef<HTMLVideoElement>(null)
   const trackerRef = useRef(new TorsoBreathTracker())
   const anchorMsRef = useRef(performance.now())
@@ -183,7 +206,7 @@ export default function App() {
     return () => stopCamera()
   }, [stopCamera])
 
-  /** While running: poll short coach lines on an interval derived from the breath cycle */
+  /** 进行中：按节律间隔拉取短句伴读（最新 mood + 画面摘要 + 当前阶段） */
   useEffect(() => {
     if (!running) return
     let cancelled = false
@@ -277,6 +300,13 @@ export default function App() {
     }
   }
 
+  const coachDisplay =
+    sanitizeUserFacingCoach(
+      coachStream.trim()
+        ? coachStream
+        : (rhythm.coachMessage ?? ''),
+    ) || (rhythm.coachMessage ?? FALLBACK_COACH)
+
   const toggleRun = () => {
     if (running) {
       setRunning(false)
@@ -289,11 +319,64 @@ export default function App() {
   }
 
   return (
-    <div className="app">
+    <>
+      <BootSplash boot={llmBoot} />
+      <div className="app" aria-busy={llmBoot.open} inert={llmBoot.open}>
       <div className="app-bg" aria-hidden />
       <header className="shell-header">
         <h1 className="shell-brand">心境漫游</h1>
         <p className="shell-tagline">呼吸 · 伴读 · 故事与聊天（本机）</p>
+        <div className="shell-voice" role="group" aria-label="语音选项">
+          <label className="shell-voice__opt">
+            <input
+              type="checkbox"
+              checked={voiceInput}
+              onChange={(e) => setVoiceInput(e.target.checked)}
+            />
+            <span>语音输入</span>
+          </label>
+          <label className="shell-voice__opt">
+            <input
+              type="checkbox"
+              checked={voiceOutput}
+              onChange={(e) => setVoiceOutput(e.target.checked)}
+            />
+            <span>语音朗读</span>
+          </label>
+          {typeof window !== 'undefined' && window.speechSynthesis && (
+            <label className="shell-voice__select-wrap">
+              <span className="shell-voice__select-label">朗读声音</span>
+              <select
+                className="shell-voice__select"
+                value={ttsVoiceURI}
+                onChange={(e) => setTtsVoiceURI(e.target.value)}
+                disabled={sortedTtsVoices.length === 0}
+                title={
+                  sortedTtsVoices.length === 0
+                    ? '正在加载系统语音列表…'
+                    : '选「自动」时会优先选较自然的中文声音'
+                }
+                aria-label="朗读声音"
+              >
+                <option value="">自动（推荐中文）</option>
+                {sortedTtsVoices.map((v, i) => (
+                  <option
+                    key={`${v.voiceURI}__${i}`}
+                    value={v.voiceURI}
+                  >
+                    {v.name}
+                    {v.lang ? ` · ${v.lang}` : ''}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+          {voiceInput && !isSpeechRecognitionSupported() && (
+            <span className="shell-voice__warn" title="请使用 Chrome / Edge 或内置 Chromium 的桌面包">
+              当前环境可能不支持语音识别
+            </span>
+          )}
+        </div>
       </header>
 
       <main className="shell">
@@ -366,17 +449,14 @@ export default function App() {
                 <article className="coach-card">
                   <div className="coach-card-head">
                     <h2 className="coach-title">伴读</h2>
-                    {running && (
-                      <span className="coach-pulse">随呼吸</span>
-                    )}
+                    <div className="coach-card-head-actions">
+                      {running && (
+                        <span className="coach-pulse">随呼吸</span>
+                      )}
+                      <VoiceReadAloudButton text={coachDisplay} />
+                    </div>
                   </div>
-                  <p className="coach-body">
-                    {sanitizeUserFacingCoach(
-                      coachStream.trim()
-                        ? coachStream
-                        : (rhythm.coachMessage ?? ''),
-                    ) || (rhythm.coachMessage ?? FALLBACK_COACH)}
-                  </p>
+                  <p className="coach-body">{coachDisplay}</p>
                 </article>
 
                 <MoodInput
@@ -437,7 +517,7 @@ export default function App() {
               />
             )}
 
-            {/* Stay mounted so chat history survives tab switches */}
+            {/* 保持挂载，避免切到节律/故事再回来时聊天记录被清空 */}
             <div
               className="chat-tab-panel"
               hidden={rightTab !== 'chat'}
@@ -455,5 +535,6 @@ export default function App() {
         </section>
       </main>
     </div>
+    </>
   )
 }

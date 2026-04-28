@@ -2,6 +2,10 @@ import { useEffect, useRef, useState } from 'react'
 import type { ChatTurn } from '../llm/assistant'
 import { fetchChatReply } from '../llm/assistant'
 import type { VisionSummary } from '../llm/prompt'
+import VoiceDictationButton from './VoiceDictationButton'
+import VoiceReadAloudButton from './VoiceReadAloudButton'
+import { useVoicePrefs } from '../voice/VoicePrefsContext'
+import { speakText } from '../voice/speechSupport'
 
 const MAX_TURNS = 24
 
@@ -20,15 +24,27 @@ export default function LlmChatPanel({
   disabled = false,
   compact = false,
 }: LlmChatPanelProps) {
+  const { voiceOutput, ttsVoiceURI } = useVoicePrefs()
   const [turns, setTurns] = useState<ChatTurn[]>([])
   const [draft, setDraft] = useState('')
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState<string | null>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
+  const lastAssistantSig = useRef('')
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [turns, busy])
+
+  useEffect(() => {
+    if (!voiceOutput || turns.length === 0) return
+    const last = turns[turns.length - 1]
+    if (last?.role !== 'assistant') return
+    const sig = `${turns.length}:${last.content.length}:${last.content.slice(0, 80)}`
+    if (sig === lastAssistantSig.current) return
+    lastAssistantSig.current = sig
+    speakText(last.content, { voiceURI: ttsVoiceURI })
+  }, [turns, voiceOutput, ttsVoiceURI])
 
   const send = async () => {
     const t = draft.trim()
@@ -94,28 +110,45 @@ export default function LlmChatPanel({
       </div>
       {err && <p className="feature-error">{err}</p>}
       <div className="chat-input-row chat-input-row--tab">
-        <textarea
-          className="feature-textarea chat-input"
-          rows={compact ? 1 : 2}
-          placeholder="说话… Ctrl+Enter 发送"
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          disabled={disabled || busy}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
-              e.preventDefault()
-              void send()
+        <div className="chat-input-inner">
+          <textarea
+            className="feature-textarea chat-input"
+            rows={compact ? 1 : 2}
+            placeholder="说话… Ctrl+Enter 发送"
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            disabled={disabled || busy}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+                e.preventDefault()
+                void send()
+              }
+            }}
+          />
+          <VoiceDictationButton
+            disabled={disabled || busy}
+            onAppend={(t) => setDraft((d) => (d ? `${d} ${t}`.trim() : t))}
+          />
+        </div>
+        <div className="chat-send-wrap">
+          <button
+            type="button"
+            className="btn-secondary chat-send"
+            disabled={disabled || busy || !draft.trim()}
+            onClick={() => void send()}
+          >
+            发送
+          </button>
+          <VoiceReadAloudButton
+            text={
+              turns.length && turns[turns.length - 1]?.role === 'assistant'
+                ? turns[turns.length - 1]!.content
+                : ''
             }
-          }}
-        />
-        <button
-          type="button"
-          className="btn-secondary chat-send"
-          disabled={disabled || busy || !draft.trim()}
-          onClick={() => void send()}
-        >
-          发送
-        </button>
+            disabled={busy}
+            label="读上条"
+          />
+        </div>
       </div>
     </article>
   )

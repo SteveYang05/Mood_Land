@@ -171,6 +171,7 @@ export async function fetchRhythmFromAssistant(
   return { params: DEFAULT_RHYTHM, raw, ok: false }
 }
 
+/** 与历史代码同名导出，便于渐进替换 */
 export const fetchRhythmFromOllama = fetchRhythmFromAssistant
 
 export async function fetchLiveCoachFromAssistant(
@@ -321,7 +322,7 @@ export interface StoryOptions extends AssistantOptions {
   running?: boolean
 }
 
-/** Personalized short story from mood, vision summary, optional hint, and breath phase */
+/** 根据 YOLO 摘要 + 自述 + 可选偏好 + 节律阶段生成情境故事 */
 export async function fetchPersonalizedStory(
   mood: string,
   vision: VisionSummary,
@@ -353,7 +354,7 @@ export async function fetchPersonalizedStory(
 
 export type ChatTurn = { role: 'user' | 'assistant'; content: string }
 
-/** Multi-turn chat; system message includes current mood and vision summary each call */
+/** 多轮闲聊；system 末尾刷新当前自述 + YOLO 摘要，用户轮次保持原文以利多轮连贯 */
 export async function fetchChatReply(
   mood: string,
   vision: VisionSummary,

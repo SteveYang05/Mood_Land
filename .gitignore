@@ -9,10 +9,19 @@ lerna-debug.log*
 
 node_modules
 dist
+
+# Coursework drafts (do not commit)
+/report/
+/*.docx
+答辩*
+快速索引*
+
+# 与 public/jungle.png 重复；构建与部署以 public 为准
+/jungle.png
 dist-ssr
 *.local
 
-# Editor
+# Editor directories and files
 .vscode/*
 !.vscode/extensions.json
 .idea
@@ -23,9 +32,18 @@ dist-ssr
 *.sln
 *.sw?
 
-# 视觉权重（体积大，构建前运行 npm run download:yolo）
+# 视觉数据（体积大，请运行 npm run download:yolo）
 public/models/*.onnx
 public/models/app.bin
 
-# ORT WASM（npm run copy:ort 生成）
+release/
+
+# ORT WASM 拷贝（体积大，构建时 npm run copy:ort 生成）
 public/ort/
+
+# 桌面包资源（维护者本地用 setup:desktop 下载，勿提交）
+src-tauri/resources/bin/**
+src-tauri/resources/models/*.gguf
+
+# 临时应用图标源图（如需可改用自有品牌图后重新 tauri icon）
+src-tauri/app-icon.png
